@@ -1,0 +1,265 @@
+================================================================================
+                    IT SUPPORT TICKET SYSTEM
+                    SEQUENCE DIAGRAMS
+================================================================================
+
+
+================================================================================
+1. TICKET CREATION FLOW (User Creates Ticket)
+================================================================================
+
+User        Browser      Controller      Model       Database      Event       Listener     Mail
+ |             |             |             |             |           |             |           |
+ |--Login---->|             |             |             |           |             |           |
+ |            |--GET /tickets/create----->|             |             |           |             |           |
+ |            |             |--Get Categories---------->|           |             |           |
+ |            |             |<--Categories Data---------|           |             |           |
+ |            |<--Show Create Form--------|             |           |             |           |
+ |            |             |             |             |           |             |           |
+ |--Fill Form-->|           |             |             |           |             |           |
+ |            |             |             |             |           |             |           |
+ |--Submit--->|             |             |             |           |             |           |
+ |            |--POST /tickets---------->|             |           |             |           |
+ |            |             |--Validate--|             |           |             |           |
+ |            |             |             |             |           |             |           |
+ |            |             |--Create Ticket---------->|           |             |           |
+ |            |             |             |--INSERT---->|           |             |           |
+ |            |             |             |<--Ticket ID-|           |             |           |
+ |            |             |<--Ticket Created---------|           |             |           |
+ |            |             |             |             |           |             |           |
+ |            |<--Redirect to Ticket------|             |           |             |           |
+ |<--Success Message--------|             |             |           |             |           |
+ |            |             |             |             |           |             |           |
+
+
+================================================================================
+2. TICKET STATUS CHANGE FLOW (Support Staff Updates Status)
+================================================================================
+
+Support     Browser      Controller      Model       Database      Event       Listener     Mail       User
+  |            |             |             |             |           |             |           |         |
+  |--Login--->|             |             |             |           |             |           |         |
+  |           |--GET /tickets/{id}------->|             |           |             |           |         |
+  |           |             |--Find Ticket------------>|           |             |           |         |
+  |           |             |             |--SELECT---->|           |             |           |         |
+  |           |             |             |<--Ticket----|           |             |           |         |
+  |           |<--Show Ticket Page--------|             |           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+  |--Change---|             |             |             |           |             |           |         |
+  |  Status   |             |             |             |           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+  |--Submit-->|             |             |             |           |             |           |         |
+  |           |--PATCH /tickets/{id}/status->|          |           |             |           |         |
+  |           |             |--Update Status---------->|           |             |           |         |
+  |           |             |             |--UPDATE---->|           |             |           |         |
+  |           |             |             |<--Updated---|           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+  |           |             |--Trigger Event---------->|           |             |           |         |
+  |           |             |             |  TicketStatusChanged    |             |           |         |
+  |           |             |             |             |---------->|             |           |         |
+  |           |             |             |             |           |--Handle---->|           |         |
+  |           |             |             |             |           |             |           |         |
+  |           |             |             |             |           |  Queue Job  |           |         |
+  |           |             |             |             |           |------------>|           |         |
+  |           |             |             |             |           |             |           |         |
+  |           |             |             |             |           |             |--Send Email------->|
+  |           |             |             |             |           |             |           |         |
+  |           |             |             |             |           |             |           |  Notification
+  |           |             |             |             |           |             |           |         |
+  |           |<--Success & Redirect------|             |           |             |           |         |
+  |<--Updated Page-----------|             |             |           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+
+
+================================================================================
+3. COMMENT ADDITION FLOW
+================================================================================
+
+User/       Browser      Controller      Model       Database      Event       Listener     Mail     Ticket
+Support       |             |             |             |           |             |           |       Owner
+  |           |             |             |             |           |             |           |         |
+  |--View---->|             |             |             |           |             |           |         |
+  | Ticket    |--GET /tickets/{id}------->|             |           |             |           |         |
+  |           |             |--Load Ticket & Comments->|           |             |           |         |
+  |           |<--Show Ticket with Comments|             |           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+  |--Write--->|             |             |             |           |             |           |         |
+  | Comment   |             |             |             |           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+  |--Submit-->|             |             |             |           |             |           |         |
+  |           |--POST /tickets/{id}/comments->|          |           |             |           |         |
+  |           |             |--Validate--|             |           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+  |           |             |--Create Comment--------->|           |             |           |         |
+  |           |             |             |--INSERT---->|           |             |           |         |
+  |           |             |             |<--Comment ID|           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+  |           |             |--Trigger Event---------->|           |             |           |         |
+  |           |             |             |   CommentAdded          |             |           |         |
+  |           |             |             |             |---------->|             |           |         |
+  |           |             |             |             |           |             |           |         |
+  |           |             |             |             |           |--Check: Internal?       |         |
+  |           |             |             |             |           |   YES -> No Email       |         |
+  |           |             |             |             |           |   NO  -> Continue       |         |
+  |           |             |             |             |           |             |           |         |
+  |           |             |             |             |           |--Check: Author = Owner? |         |
+  |           |             |             |             |           |   YES -> No Email       |         |
+  |           |             |             |             |           |   NO  -> Send Email     |         |
+  |           |             |             |             |           |             |           |         |
+  |           |             |             |             |           |             |--Send Email------->|
+  |           |             |             |             |           |             |           |         |
+  |           |<--Redirect with Success---|             |           |             |           |  Notification
+  |<--Comment Added----------|             |             |           |             |           |         |
+  |           |             |             |             |           |             |           |         |
+
+
+================================================================================
+4. TICKET ASSIGNMENT FLOW (Support Assigns Ticket)
+================================================================================
+
+Support     Browser      Controller      Model       Database
+  |            |             |             |             |
+  |--View----->|             |             |             |
+  | Ticket     |--GET /tickets/{id}------->|             |
+  |            |<--Show Ticket with Assign Form---------|
+  |            |             |             |             |
+  |--Select--->|             |             |             |
+  | Support    |             |             |             |
+  | Staff      |             |             |             |
+  |            |             |             |             |
+  |--Submit--->|             |             |             |
+  |            |--PATCH /tickets/{id}/assign->|          |
+  |            |             |--Validate--|             |
+  |            |             |             |             |
+  |            |             |--Update assigned_to----->|
+  |            |             |             |--UPDATE---->|
+  |            |             |             |<--Success---|
+  |            |             |             |             |
+  |            |<--Redirect Success Message|             |
+  |<--Ticket Assigned--------|             |             |
+  |            |             |             |             |
+
+
+================================================================================
+5. USER AUTHENTICATION FLOW
+================================================================================
+
+User        Browser      Controller      Auth        Database
+ |             |             |             |             |
+ |--Visit----->|             |             |             |
+ | Website     |--GET /----->|             |             |
+ |             |<--Redirect to /login------|             |
+ |             |             |             |             |
+ |             |--GET /login->|             |             |
+ |             |<--Show Login Form---------|             |
+ |             |             |             |             |
+ |--Enter----->|             |             |             |
+ | Credentials |             |             |             |
+ |             |             |             |             |
+ |--Submit---->|             |             |             |
+ |             |--POST /login------------>|             |
+ |             |             |--Validate Credentials---->|
+ |             |             |             |--SELECT---->|
+ |             |             |             |<--User Data-|
+ |             |             |             |             |
+ |             |             |--Hash Check-|             |
+ |             |             |             |             |
+ |             |             |<--Auth Success/Fail------|
+ |             |             |             |             |
+ |             |             |--Create Session---------->|
+ |             |             |             |--INSERT---->|
+ |             |             |             |             |
+ |             |<--Redirect to /dashboard--|             |
+ |<--Show Dashboard---------|             |             |
+ |             |             |             |             |
+
+
+================================================================================
+6. CATEGORY MANAGEMENT FLOW (Admin)
+================================================================================
+
+Admin       Browser      Controller      Model       Database
+  |            |             |             |             |
+  |--Login---->|             |             |             |
+  |            |--GET /categories--------->|             |
+  |            |             |--Get All Categories----->|
+  |            |             |             |--SELECT---->|
+  |            |             |             |<--List------|
+  |            |<--Show Categories List----|             |
+  |            |             |             |             |
+  |--Click---->|             |             |             |
+  | Create     |--GET /categories/create-->|             |
+  |            |<--Show Create Form--------|             |
+  |            |             |             |             |
+  |--Fill----->|             |             |             |
+  | Form       |             |             |             |
+  |            |             |             |             |
+  |--Submit--->|             |             |             |
+  |            |--POST /categories-------->|             |
+  |            |             |--Validate--|             |
+  |            |             |             |             |
+  |            |             |--Create Category-------->|
+  |            |             |             |--INSERT---->|
+  |            |             |             |<--Created---|
+  |            |             |             |             |
+  |            |<--Redirect to List--------|             |
+  |<--Success Message---------|             |             |
+  |            |             |             |             |
+
+
+================================================================================
+7. DASHBOARD LOADING FLOW
+================================================================================
+
+User        Browser      Controller      Model       Database
+ |             |             |             |             |
+ |--Login---->|             |             |             |
+ |            |--GET /dashboard---------->|             |
+ |            |             |             |             |
+ |            |             |--Check User Role--------->|
+ |            |             |             |             |
+ |            |             |--Get Ticket Stats------->|
+ |            |             |   COUNT, GROUP BY         |
+ |            |             |             |<--Stats-----|
+ |            |             |             |             |
+ |            |             |--Get Recent Tickets----->|
+ |            |             |   ORDER BY created_at     |
+ |            |             |             |<--Tickets---|
+ |            |             |             |             |
+ |            |             |--Get Categories--------->|
+ |            |             |             |<--Categories|
+ |            |             |             |             |
+ |            |<--Render Dashboard View---|             |
+ |<--Show Dashboard---------|             |             |
+ |   (user.blade.php OR support.blade.php)             |
+ |            |             |             |             |
+
+
+================================================================================
+                            NOTES
+================================================================================
+
+1. All operations are protected by authentication middleware
+2. Authorization checks are performed in controllers
+3. Events are dispatched asynchronously using Laravel's queue system
+4. Email notifications are sent via queue workers (ShouldQueue interface)
+5. Database transactions ensure data consistency
+6. Soft deletes allow ticket recovery
+7. CSRF tokens protect against cross-site request forgery
+
+================================================================================
+                        ACTOR ROLES
+================================================================================
+
+User         - Regular user who creates tickets
+Support      - Support staff who handles tickets
+Admin        - Administrator with full access
+Browser      - Web browser (client)
+Controller   - Laravel Controller (handles requests)
+Model        - Eloquent Model (business logic)
+Database     - MySQL Database
+Event        - Laravel Event
+Listener     - Event Listener
+Mail         - Mail service
+
+================================================================================

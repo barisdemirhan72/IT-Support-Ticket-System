@@ -1,0 +1,128 @@
+@startuml Database Structure - IT Support Ticket System
+
+!define table(x) entity x << (T,#FFAAAA) >>
+!define primary_key(x) <u>x</u>
+!define foreign_key(x) #x
+
+skinparam linetype ortho
+skinparam roundcorner 10
+skinparam class {
+    BackgroundColor LightYellow
+    BorderColor Black
+    ArrowColor Black
+}
+
+entity "users" as users {
+  primary_key(id) : BIGINT
+  --
+  name : VARCHAR(255)
+  email : VARCHAR(255) UNIQUE
+  email_verified_at : TIMESTAMP NULL
+  password : VARCHAR(255)
+  role : ENUM('user', 'support', 'admin')
+  remember_token : VARCHAR(100) NULL
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "categories" as categories {
+  primary_key(id) : BIGINT
+  --
+  name : VARCHAR(255) UNIQUE
+  description : TEXT NULL
+  is_active : BOOLEAN DEFAULT TRUE
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "tickets" as tickets {
+  primary_key(id) : BIGINT
+  --
+  title : VARCHAR(255)
+  description : TEXT
+  status : ENUM('new', 'in_progress', 'completed', 'closed', 'rejected')
+  priority : ENUM('low', 'medium', 'high', 'urgent')
+  foreign_key(user_id) : BIGINT
+  foreign_key(category_id) : BIGINT
+  foreign_key(assigned_to) : BIGINT NULL
+  resolved_at : TIMESTAMP NULL
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  deleted_at : TIMESTAMP NULL
+  --
+  Indexes:
+  - user_id
+  - category_id
+  - assigned_to
+  - status
+  - priority
+}
+
+entity "comments" as comments {
+  primary_key(id) : BIGINT
+  --
+  foreign_key(ticket_id) : BIGINT
+  foreign_key(user_id) : BIGINT
+  comment : TEXT
+  is_internal : BOOLEAN DEFAULT FALSE
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  --
+  Indexes:
+  - ticket_id
+  - user_id
+}
+
+' Relationships
+
+users ||--o{ tickets : "creates\n(user_id)"
+users ||--o{ tickets : "assigned to\n(assigned_to)"
+users ||--o{ comments : "writes\n(user_id)"
+
+categories ||--o{ tickets : "categorizes\n(category_id)"
+
+tickets ||--o{ comments : "has\n(ticket_id)"
+
+note right of users
+  **User Roles:**
+  - user: Regular user who creates tickets
+  - support: Support staff who handles tickets
+  - admin: Administrator with full access
+
+  **Authentication:**
+  - Uses Laravel's built-in authentication
+  - Email verification supported
+end note
+
+note right of tickets
+  **Ticket Statuses:**
+  - new: Just created
+  - in_progress: Being worked on
+  - completed: Resolved
+  - closed: Closed by user/admin
+  - rejected: Rejected by support
+
+  **Priorities:**
+  - low, medium, high, urgent
+
+  **Soft Deletes:**
+  - Tickets can be soft deleted
+end note
+
+note right of comments
+  **Comment Types:**
+  - Public: Visible to ticket owner
+  - Internal: Only visible to support staff
+
+  **Notifications:**
+  - Email sent when comment added
+end note
+
+note right of categories
+  **Category Management:**
+  - Only admins can manage
+  - Can be activated/deactivated
+  - Cannot delete if tickets exist
+end note
+
+@enduml

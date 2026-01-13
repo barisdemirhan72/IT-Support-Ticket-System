@@ -1,0 +1,392 @@
+================================================================================
+                    IT SUPPORT TICKET SYSTEM
+                    CLASS DIAGRAM
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CLASS: User (Model)                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Properties:                                                                  │
+│   - id: int                                                                  │
+│   - name: string                                                             │
+│   - email: string                                                            │
+│   - password: string                                                         │
+│   - role: enum (user, support, admin)                                       │
+│   - remember_token: string                                                   │
+│   - created_at: datetime                                                     │
+│   - updated_at: datetime                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + tickets(): HasMany<Ticket>                                              │
+│   + assignedTickets(): HasMany<Ticket>                                      │
+│   + comments(): HasMany<Comment>                                            │
+│   + isAdmin(): bool                                                          │
+│   + isSupport(): bool                                                        │
+│   + isUser(): bool                                                           │
+│   + canManageTickets(): bool                                                 │
+│   + canManageCategories(): bool                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                    [Authenticatable]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CLASS: Ticket (Model)                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Properties:                                                                  │
+│   - id: int                                                                  │
+│   - title: string                                                            │
+│   - description: text                                                        │
+│   - status: enum (new, in_progress, completed, closed, rejected)            │
+│   - priority: enum (low, medium, high, urgent)                              │
+│   - user_id: int                                                             │
+│   - category_id: int                                                         │
+│   - assigned_to: int (nullable)                                             │
+│   - resolved_at: datetime (nullable)                                        │
+│   - created_at: datetime                                                     │
+│   - updated_at: datetime                                                     │
+│   - deleted_at: datetime (nullable)                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Constants:                                                                   │
+│   + STATUS_NEW = 'new'                                                       │
+│   + STATUS_IN_PROGRESS = 'in_progress'                                      │
+│   + STATUS_COMPLETED = 'completed'                                          │
+│   + STATUS_CLOSED = 'closed'                                                │
+│   + STATUS_REJECTED = 'rejected'                                            │
+│   + PRIORITY_LOW = 'low'                                                     │
+│   + PRIORITY_MEDIUM = 'medium'                                              │
+│   + PRIORITY_HIGH = 'high'                                                   │
+│   + PRIORITY_URGENT = 'urgent'                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + user(): BelongsTo<User>                                                 │
+│   + category(): BelongsTo<Category>                                         │
+│   + assignedTo(): BelongsTo<User>                                           │
+│   + comments(): HasMany<Comment>                                            │
+│   + scopeOpen(query): Builder                                               │
+│   + scopeClosed(query): Builder                                             │
+│   + scopeStatus(query, status): Builder                                     │
+│   + scopePriority(query, priority): Builder                                 │
+│   + isOpen(): bool                                                           │
+│   + isClosed(): bool                                                         │
+│   + isNew(): bool                                                            │
+│   + isInProgress(): bool                                                     │
+│   + isCompleted(): bool                                                      │
+│   + updateStatus(newStatus): bool                                           │
+│   + assignTo(userId): bool                                                   │
+│   + addComment(userId, comment, isInternal): Comment                        │
+│   + getStatuses(): array                                                     │
+│   + getPriorities(): array                                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                        [Model]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        CLASS: Category (Model)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Properties:                                                                  │
+│   - id: int                                                                  │
+│   - name: string                                                             │
+│   - description: text (nullable)                                            │
+│   - is_active: bool                                                          │
+│   - created_at: datetime                                                     │
+│   - updated_at: datetime                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + tickets(): HasMany<Ticket>                                              │
+│   + scopeActive(query): Builder                                             │
+│   + isActive(): bool                                                         │
+│   + getTicketCountAttribute(): int                                          │
+│   + getOpenTicketCountAttribute(): int                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                        [Model]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CLASS: Comment (Model)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Properties:                                                                  │
+│   - id: int                                                                  │
+│   - ticket_id: int                                                           │
+│   - user_id: int                                                             │
+│   - comment: text                                                            │
+│   - is_internal: bool                                                        │
+│   - created_at: datetime                                                     │
+│   - updated_at: datetime                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + ticket(): BelongsTo<Ticket>                                             │
+│   + user(): BelongsTo<User>                                                 │
+│   + scopePublic(query): Builder                                             │
+│   + scopeInternal(query): Builder                                           │
+│   + isInternal(): bool                                                       │
+│   + isPublic(): bool                                                         │
+│   + canBeViewedBy(user): bool                                               │
+│   + getAuthorNameAttribute(): string                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                        [Model]
+
+
+================================================================================
+                            CONTROLLER CLASSES
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      CLASS: TicketController                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + index(request): View                                                     │
+│   + create(): View                                                           │
+│   + store(request): RedirectResponse                                         │
+│   + show(ticket): View                                                       │
+│   + edit(ticket): View                                                       │
+│   + update(request, ticket): RedirectResponse                                │
+│   + destroy(ticket): RedirectResponse                                        │
+│   + updateStatus(request, ticket): RedirectResponse                          │
+│   + assign(request, ticket): RedirectResponse                                │
+│   + addComment(request, ticket): RedirectResponse                            │
+│   # authorizeTicketAccess(ticket): void                                      │
+│   # authorizeTicketEdit(ticket): void                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                      [Controller]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     CLASS: CategoryController                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + index(request): View                                                     │
+│   + create(): View                                                           │
+│   + store(request): RedirectResponse                                         │
+│   + show(category): View                                                     │
+│   + edit(category): View                                                     │
+│   + update(request, category): RedirectResponse                              │
+│   + destroy(category): RedirectResponse                                      │
+│   + toggleStatus(category): RedirectResponse                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                      [Controller]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CLASS: DashboardController                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + index(): View                                                            │
+│   + statistics(request): JsonResponse                                        │
+│   # userDashboard(user): View                                                │
+│   # supportDashboard(user): View                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                      [Controller]
+
+
+================================================================================
+                          EVENT & LISTENER CLASSES
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CLASS: TicketStatusChanged (Event)                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Properties:                                                                  │
+│   + ticket: Ticket                                                           │
+│   + oldStatus: string                                                        │
+│   + newStatus: string                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + __construct(ticket, oldStatus, newStatus)                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      CLASS: CommentAdded (Event)                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Properties:                                                                  │
+│   + comment: Comment                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + __construct(comment)                                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│          CLASS: SendTicketStatusChangedNotification (Listener)               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + handle(event): void                                                      │
+│   + failed(event, exception): void                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ implements
+                            ▼
+                      [ShouldQueue]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              CLASS: SendCommentAddedNotification (Listener)                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + handle(event): void                                                      │
+│   + failed(event, exception): void                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ implements
+                            ▼
+                      [ShouldQueue]
+
+
+================================================================================
+                              MAIL CLASSES
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                  CLASS: TicketStatusChangedMail (Mailable)                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Properties:                                                                  │
+│   + ticket: Ticket                                                           │
+│   + oldStatus: string                                                        │
+│   + newStatus: string                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + __construct(ticket, oldStatus, newStatus)                               │
+│   + envelope(): Envelope                                                     │
+│   + content(): Content                                                       │
+│   + attachments(): array                                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                       [Mailable]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CLASS: CommentAddedMail (Mailable)                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Properties:                                                                  │
+│   + comment: Comment                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Methods:                                                                     │
+│   + __construct(comment)                                                     │
+│   + envelope(): Envelope                                                     │
+│   + content(): Content                                                       │
+│   + attachments(): array                                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ extends
+                            ▼
+                       [Mailable]
+
+
+================================================================================
+                          RELATIONSHIPS DIAGRAM
+================================================================================
+
+USER ──────────< TICKET         (One user creates many tickets)
+  │               │
+  │               ├──────────< COMMENT (One ticket has many comments)
+  │               │
+  └───────────────┘ (One user creates many comments)
+
+CATEGORY ──────< TICKET         (One category has many tickets)
+
+USER ──────────< TICKET         (One user is assigned many tickets)
+
+
+TICKET ─── triggers ──> TicketStatusChanged
+                              │
+                              └──> SendTicketStatusChangedNotification
+                                              │
+                                              └──> TicketStatusChangedMail
+
+COMMENT ─── triggers ──> CommentAdded
+                              │
+                              └──> SendCommentAddedNotification
+                                              │
+                                              └──> CommentAddedMail
+
+
+TicketController ───uses──> Ticket, Category, User
+CategoryController ─uses──> Category
+DashboardController uses──> Ticket, Category, User
+
+
+================================================================================
+                            DESIGN PATTERNS USED
+================================================================================
+
+1. MVC Pattern (Model-View-Controller)
+   - Models: User, Ticket, Category, Comment
+   - Views: Blade templates in resources/views/
+   - Controllers: TicketController, CategoryController, DashboardController
+
+2. Observer Pattern (Events & Listeners)
+   - Events: TicketStatusChanged, CommentAdded
+   - Listeners: SendTicketStatusChangedNotification, SendCommentAddedNotification
+
+3. Repository Pattern (Eloquent ORM)
+   - Models act as repositories for database operations
+
+4. Singleton Pattern (Service Container)
+   - Laravel's IoC container manages dependencies
+
+5. Factory Pattern (Model Factories)
+   - Used for creating test data
+
+
+================================================================================
+                          OOP PRINCIPLES APPLIED
+================================================================================
+
+1. ENCAPSULATION
+   - Private/protected properties
+   - Public methods for controlled access
+   - Getter/setter methods
+
+2. INHERITANCE
+   - User extends Authenticatable
+   - All models extend Model
+   - Controllers extend Controller
+   - Mail classes extend Mailable
+
+3. POLYMORPHISM
+   - HasMany, BelongsTo relationships
+   - Interface implementations (ShouldQueue)
+   - Method overriding
+
+4. ABSTRACTION
+   - Abstract Controller class
+   - Interface contracts
+   - Eloquent ORM abstracts SQL
+
+
+================================================================================
+                              LEGEND
+================================================================================
+
++    = Public method/property
+-    = Private method/property
+#    = Protected method/property
+─>   = Association/Uses
+──<  = One-to-Many relationship
+│    = Inheritance/Extends
+▼    = Implements
+
+================================================================================

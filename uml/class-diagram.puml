@@ -1,0 +1,293 @@
+@startuml Class Diagram - IT Support Ticket System
+
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam roundcorner 10
+skinparam class {
+    BackgroundColor LightYellow
+    BorderColor Black
+    ArrowColor Black
+}
+
+package "Models" {
+    class User {
+        - id: int
+        - name: string
+        - email: string
+        - password: string
+        - role: enum
+        - remember_token: string
+        - created_at: datetime
+        - updated_at: datetime
+        --
+        + tickets(): HasMany
+        + assignedTickets(): HasMany
+        + comments(): HasMany
+        + isAdmin(): bool
+        + isSupport(): bool
+        + isUser(): bool
+        + canManageTickets(): bool
+        + canManageCategories(): bool
+    }
+
+    class Ticket {
+        - id: int
+        - title: string
+        - description: text
+        - status: enum
+        - priority: enum
+        - user_id: int
+        - category_id: int
+        - assigned_to: int
+        - resolved_at: datetime
+        - created_at: datetime
+        - updated_at: datetime
+        - deleted_at: datetime
+        --
+        {static} + STATUS_NEW: string
+        {static} + STATUS_IN_PROGRESS: string
+        {static} + STATUS_COMPLETED: string
+        {static} + STATUS_CLOSED: string
+        {static} + STATUS_REJECTED: string
+        {static} + PRIORITY_LOW: string
+        {static} + PRIORITY_MEDIUM: string
+        {static} + PRIORITY_HIGH: string
+        {static} + PRIORITY_URGENT: string
+        --
+        + user(): BelongsTo
+        + category(): BelongsTo
+        + assignedTo(): BelongsTo
+        + comments(): HasMany
+        + scopeStatus(query, status): Builder
+        + scopeOpen(query): Builder
+        + scopeClosed(query): Builder
+        + scopePriority(query, priority): Builder
+        + scopeForUser(query, userId): Builder
+        + scopeAssignedToUser(query, userId): Builder
+        + isOpen(): bool
+        + isClosed(): bool
+        + isNew(): bool
+        + isInProgress(): bool
+        + isCompleted(): bool
+        + updateStatus(newStatus): bool
+        + assignTo(userId): bool
+        + addComment(userId, comment, isInternal): Comment
+        {static} + getStatuses(): array
+        {static} + getPriorities(): array
+    }
+
+    class Category {
+        - id: int
+        - name: string
+        - description: text
+        - is_active: bool
+        - created_at: datetime
+        - updated_at: datetime
+        --
+        + tickets(): HasMany
+        + scopeActive(query): Builder
+        + isActive(): bool
+        + getTicketCountAttribute(): int
+        + getOpenTicketCountAttribute(): int
+    }
+
+    class Comment {
+        - id: int
+        - ticket_id: int
+        - user_id: int
+        - comment: text
+        - is_internal: bool
+        - created_at: datetime
+        - updated_at: datetime
+        --
+        + ticket(): BelongsTo
+        + user(): BelongsTo
+        + scopePublic(query): Builder
+        + scopeInternal(query): Builder
+        + isInternal(): bool
+        + isPublic(): bool
+        + canBeViewedBy(user): bool
+        + getAuthorNameAttribute(): string
+        + getFormattedCreatedAtAttribute(): string
+    }
+}
+
+package "Controllers" {
+    class TicketController {
+        + index(request): View
+        + create(): View
+        + store(request): RedirectResponse
+        + show(ticket): View
+        + edit(ticket): View
+        + update(request, ticket): RedirectResponse
+        + destroy(ticket): RedirectResponse
+        + updateStatus(request, ticket): RedirectResponse
+        + assign(request, ticket): RedirectResponse
+        + addComment(request, ticket): RedirectResponse
+        - authorizeTicketAccess(ticket): void
+        - authorizeTicketEdit(ticket): void
+    }
+
+    class CategoryController {
+        + index(request): View
+        + create(): View
+        + store(request): RedirectResponse
+        + show(category): View
+        + edit(category): View
+        + update(request, category): RedirectResponse
+        + destroy(category): RedirectResponse
+        + toggleStatus(category): RedirectResponse
+    }
+
+    class DashboardController {
+        + index(): View
+        + statistics(request): JsonResponse
+        - userDashboard(user): View
+        - supportDashboard(user): View
+    }
+}
+
+package "Events" {
+    class TicketStatusChanged {
+        + ticket: Ticket
+        + oldStatus: string
+        + newStatus: string
+        --
+        + __construct(ticket, oldStatus, newStatus)
+    }
+
+    class CommentAdded {
+        + comment: Comment
+        --
+        + __construct(comment)
+    }
+}
+
+package "Listeners" {
+    class SendTicketStatusChangedNotification {
+        + handle(event): void
+        + failed(event, exception): void
+    }
+
+    class SendCommentAddedNotification {
+        + handle(event): void
+        + failed(event, exception): void
+    }
+}
+
+package "Mail" {
+    class TicketStatusChangedMail {
+        + ticket: Ticket
+        + oldStatus: string
+        + newStatus: string
+        --
+        + __construct(ticket, oldStatus, newStatus)
+        + envelope(): Envelope
+        + content(): Content
+        + attachments(): array
+    }
+
+    class CommentAddedMail {
+        + comment: Comment
+        --
+        + __construct(comment)
+        + envelope(): Envelope
+        + content(): Content
+        + attachments(): array
+    }
+}
+
+' Relationships between Models
+User "1" --> "*" Ticket : creates >
+User "1" --> "*" Ticket : assigned to >
+User "1" --> "*" Comment : writes >
+Category "1" --> "*" Ticket : categorizes >
+Ticket "1" --> "*" Comment : has >
+
+' Controller dependencies
+TicketController ..> Ticket : uses
+TicketController ..> Category : uses
+TicketController ..> User : uses
+CategoryController ..> Category : uses
+DashboardController ..> Ticket : uses
+DashboardController ..> Category : uses
+DashboardController ..> User : uses
+
+' Event and Listener relationships
+Ticket ..> TicketStatusChanged : triggers
+Ticket ..> CommentAdded : triggers
+TicketStatusChanged --> SendTicketStatusChangedNotification : handled by
+CommentAdded --> SendCommentAddedNotification : handled by
+
+' Mail relationships
+SendTicketStatusChangedNotification ..> TicketStatusChangedMail : sends
+SendCommentAddedNotification ..> CommentAddedMail : sends
+TicketStatusChangedMail ..> Ticket : uses
+CommentAddedMail ..> Comment : uses
+
+note right of User
+    **Authenticatable Model**
+    Extends Laravel's User class
+    Implements authentication interfaces
+
+    **Role-based Access Control:**
+    - User: Can create/view own tickets
+    - Support: Can manage all tickets
+    - Admin: Full system access
+end note
+
+note right of Ticket
+    **Main Entity**
+    Represents a support request
+
+    **Features:**
+    - Status tracking
+    - Priority levels
+    - Assignment to support staff
+    - Soft deletes
+    - Email notifications on changes
+
+    **Business Rules:**
+    - Users can edit only NEW tickets
+    - Support can change status
+    - Auto-timestamp on resolution
+end note
+
+note right of TicketStatusChanged
+    **Event-Driven Architecture**
+
+    When ticket status changes:
+    1. Event is dispatched
+    2. Listener catches event
+    3. Email notification sent
+    4. Async via queue (ShouldQueue)
+end note
+
+note right of Category
+    **Classifier Table**
+
+    Examples:
+    - Hardware
+    - Software
+    - Network
+    - Access
+
+    **Management:**
+    - Admin-only access
+    - Can be activated/deactivated
+    - Protected from deletion if in use
+end note
+
+note right of Comment
+    **Communication System**
+
+    **Types:**
+    - Public: Visible to ticket owner
+    - Internal: Support staff only
+
+    **Triggers:**
+    - Email notification to ticket owner
+    - Only for public comments
+end note
+
+@enduml
